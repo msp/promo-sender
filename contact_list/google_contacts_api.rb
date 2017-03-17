@@ -66,8 +66,6 @@ module ContactList
 
     def process_contacts_list(contact_list)
       (contact_list || []).map do |contact|
-        puts '+'*80
-        pp contact
         contact_raw_data = {
           emails: extract_schema(contact['gd$email']),
           phone_numbers: extract_schema(contact['gd$phoneNumber']),
@@ -98,7 +96,6 @@ module ContactList
         key = (record['rel'] || 'unknown').split('#').last.to_sym
         # MSP value = cleanse_gdata(record.except('rel'))
         record.delete('rel')
-        pp record
         value = cleanse_gdata(record)
         value[:primary] = true if value[:primary] == 'true' # cast to a boolean for primary entries
         # MSP value[:protocol] = value[:protocol].split('#').last if value[:protocol].present? # clean namespace from handle protocols
@@ -131,18 +128,19 @@ module ContactList
   end
 
   class GoogleContact
-    attr_accessor :first_name, :last_name, :email_address, :raw_data
+    attr_accessor :first_name, :last_name, :full_name, :email_address, :raw_data
 
     def initialize(raw_data)
       @raw_data = raw_data
       @first_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:given_name] : nil
       @last_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:family_name] : nil
+      @full_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:full_name] : nil
       @email_address = raw_data[:primary_email]
     end
 
-    def full_name
-      "#{@first_name} #{@last_name}"
-    end
+    # def full_name
+    #   "#{@first_name} #{@last_name}"
+    # end
   end
 
   class GoogleGroup

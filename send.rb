@@ -14,11 +14,12 @@ require 'fileutils'
 OOB_URI = 'urn:ietf:wg:oauth:2.0:oob'
 APPLICATION_NAME = 'Gmail API Ruby Quickstart'
 CLIENT_SECRETS_PATH = 'client_secret.json'
-CREDENTIALS_PATH = File.join(Dir.home, '.credentials',
-                             'gmail-ruby-quickstart.yaml')
 
-# SCOPE = Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE
-SCOPE = Google::Apis::PeopleV1::AUTH_CONTACTS_READONLY
+GMAIL_CREDENTIALS_PATH = File.join(Dir.home, '.credentials', 'gmail-ruby.yaml')
+CONTACTS_CREDENTIALS_PATH = File.join(Dir.home, '.credentials', 'contacts-ruby.yaml')
+
+GMAIL_SCOPE = Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE
+CONTACTS_SCOPE = Google::Apis::PeopleV1::AUTH_CONTACTS_READONLY
 
 ##
 # Ensure valid credentials, either by restoring from the saved credentials
@@ -26,13 +27,13 @@ SCOPE = Google::Apis::PeopleV1::AUTH_CONTACTS_READONLY
 # the user's default browser will be launched to approve the request.
 #
 # @return [Google::Auth::UserRefreshCredentials] OAuth2 credentials
-def authorize
-  FileUtils.mkdir_p(File.dirname(CREDENTIALS_PATH))
+def authorize(scope, credentials_path)
+  FileUtils.mkdir_p(File.dirname(credentials_path))
 
   client_id = Google::Auth::ClientId.from_file(CLIENT_SECRETS_PATH)
-  token_store = Google::Auth::Stores::FileTokenStore.new(file: CREDENTIALS_PATH)
+  token_store = Google::Auth::Stores::FileTokenStore.new(file: credentials_path)
   authorizer = Google::Auth::UserAuthorizer.new(
-    client_id, SCOPE, token_store)
+    client_id, scope, token_store)
   user_id = 'default'
   credentials = authorizer.get_credentials(user_id)
   if credentials.nil?
@@ -51,8 +52,7 @@ end
 # Initialize the API
 service = Google::Apis::GmailV1::GmailService.new
 service.client_options.application_name = APPLICATION_NAME
-# TODO MSP service.authorization = authorize(Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE)
-service.authorization = authorize
+service.authorization = authorize(GMAIL_SCOPE, GMAIL_CREDENTIALS_PATH)
 
 
 # Look up contacts for a specific group
@@ -60,29 +60,35 @@ service.authorization = authorize
 PromoEarlyGroup = Struct.new(:id)
 promo_early_group = PromoEarlyGroup.new('http://www.google.com/m8/feeds/groups/spatial%40infrasonics.net/base/dbff78db39606')
 
-members =  ContactList::GoogleContactsApi.new(service.client, authorize).group_members(promo_early_group)
+members =  ContactList::GoogleContactsApi.new(service.client, authorize(CONTACTS_SCOPE, CONTACTS_CREDENTIALS_PATH)).group_members(promo_early_group)
 # puts members.length
 # pp members
 
 members[0..5].each do |member|
+  # TODO fix this up in extractor as some are nil
+  name = member.full_name || member.raw_data[:full_name][:fullName]
+  puts '-'*30
+  puts name
+  puts member.email_address
+  puts '\n'
   pp member
 
-  # user_id     = 'me'
-  # format      = 'text/html'
-  # recipient   = 'someguy@example.com'
-  # sender      = 'spatial@infrasonics.net'
-  # subject     = "A subject at #{Time.now}"
-  # body        = "Body goes here <a href='http://infrasonics.net'>LINK HERE</a> something after the embedded link <img src='http://spatial.infrasonics.net/infra12008' alt='record cover /> Text after the image."
-  # _raw        = "Content-type: #{format}\r\nTo: #{recipient}\r\nFrom: #{sender}\r\nSubject: #{subject}\r\n\r\n#{body}"
-  #
-  # message = Google::Apis::GmailV1::Message.new({raw: _raw})
-  # draft = Google::Apis::GmailV1::Draft.new({message: message})
-  # result = service.create_user_draft(user_id, draft)
+  user_id     = 'me'
+  format      = 'text/html'
+  recipient   = member.email_address
+  sender      = 'spatial@infrasonics.net'
+  subject     = "A music of sound systems LP for #{name}"
+  body        = "Body goes here <a href='http://infrasonics.net'>LINK HERE</a> something after the embedded link <img src='http://spatial.infrasonics.net/infra12008' alt='record cover /> Text after the image."
+  _raw        = "Content-type: #{format}\r\nTo: #{recipient}\r\nFrom: #{sender}\r\nSubject: #{subject}\r\n\r\n#{body}"
 
-  # puts "\n\n"
-  # puts '='*80
-  # puts result.inspect
-  # puts '_'*80
+  message = Google::Apis::GmailV1::Message.new({raw: _raw})
+  draft = Google::Apis::GmailV1::Draft.new({message: message})
+  result = service.create_user_draft(user_id, draft)
+
+  puts "\n\n"
+  puts '='*80
+  puts result.inspect
+  puts '_'*80
 end
 
 
