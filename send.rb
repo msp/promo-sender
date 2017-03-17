@@ -1,6 +1,9 @@
 require 'google/apis/gmail_v1'
+require 'google/apis/people_v1'
 require 'googleauth'
 require 'googleauth/stores/file_token_store'
+
+require './contact_list/google_contacts_api.rb'
 
 require 'fileutils'
 
@@ -14,8 +17,8 @@ CLIENT_SECRETS_PATH = 'client_secret.json'
 CREDENTIALS_PATH = File.join(Dir.home, '.credentials',
                              'gmail-ruby-quickstart.yaml')
 
-# SCOPE = Google::Apis::GmailV1::AUTH_GMAIL_READONLY
-SCOPE = Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE
+# SCOPE = Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE
+SCOPE = Google::Apis::PeopleV1::AUTH_CONTACTS_READONLY
 
 ##
 # Ensure valid credentials, either by restoring from the saved credentials
@@ -35,8 +38,8 @@ def authorize
   if credentials.nil?
     url = authorizer.get_authorization_url(
       base_url: OOB_URI)
-    puts "Open the following URL in the browser and enter the " +
-           "resulting code after authorization"
+    puts 'Open the following URL in the browser and enter the ' +
+           'resulting code HERE after authorization'
     puts url
     code = gets
     credentials = authorizer.get_and_store_credentials_from_code(
@@ -48,26 +51,41 @@ end
 # Initialize the API
 service = Google::Apis::GmailV1::GmailService.new
 service.client_options.application_name = APPLICATION_NAME
+# TODO MSP service.authorization = authorize(Google::Apis::GmailV1::AUTH_GMAIL_COMPOSE)
 service.authorization = authorize
 
 
-user_id     = 'me'
-format      = 'text/html'
-recipient   = 'someguy@example.com'
-sender      = 'spatial@infrasonics.net'
-subject     = "A subject at #{Time.now}"
-body        = "Body goes here <a href='http://infrasonics.net'>LINK HERE</a> something after the embedded link <img src='http://spatial.infrasonics.net/infra12008' alt='record cover /> Text after the image."
-_raw        = "Content-type: #{format}\r\nTo: #{recipient}\r\nFrom: #{sender}\r\nSubject: #{subject}\r\n\r\n#{body}"
+# Look up contacts for a specific group
+# Found from ContactList::GoogleContactsApi.new(service.client, authorize).all_groups inspection
+PromoEarlyGroup = Struct.new(:id)
+promo_early_group = PromoEarlyGroup.new('http://www.google.com/m8/feeds/groups/spatial%40infrasonics.net/base/dbff78db39606')
 
-message = Google::Apis::GmailV1::Message.new({raw: _raw})
-draft = Google::Apis::GmailV1::Draft.new({message: message})
+members =  ContactList::GoogleContactsApi.new(service.client, authorize).group_members(promo_early_group)
+# puts members.length
+# pp members
 
-result = service.create_user_draft(user_id, draft)
+members[0..5].each do |member|
+  pp member
 
-puts "\n\n"
-puts '='*80
-puts result.inspect
-puts '_'*80
+  # user_id     = 'me'
+  # format      = 'text/html'
+  # recipient   = 'someguy@example.com'
+  # sender      = 'spatial@infrasonics.net'
+  # subject     = "A subject at #{Time.now}"
+  # body        = "Body goes here <a href='http://infrasonics.net'>LINK HERE</a> something after the embedded link <img src='http://spatial.infrasonics.net/infra12008' alt='record cover /> Text after the image."
+  # _raw        = "Content-type: #{format}\r\nTo: #{recipient}\r\nFrom: #{sender}\r\nSubject: #{subject}\r\n\r\n#{body}"
+  #
+  # message = Google::Apis::GmailV1::Message.new({raw: _raw})
+  # draft = Google::Apis::GmailV1::Draft.new({message: message})
+  # result = service.create_user_draft(user_id, draft)
+
+  # puts "\n\n"
+  # puts '='*80
+  # puts result.inspect
+  # puts '_'*80
+end
+
+
 
 # # Show the user's labels
 # user_id = 'me'
