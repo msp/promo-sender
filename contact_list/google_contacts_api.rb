@@ -118,8 +118,8 @@ module ContactList
     #       :family_name => "Smith" }
     def cleanse_gdata(hash)
       (hash || {}).inject({}) do |m, (k, v)|
-        # MSP k = k.gsub(/\Agd\$/, '').underscore # remove leading 'gd$' on key names and switch to underscores
         k = k.gsub(/\Agd\$/, '') # remove leading 'gd$' on key names and switch to underscores
+        k = ContactList.underscore(k)
         v = v['$t'] if v.is_a?(Hash) && v.keys == ['$t'] # flatten out { '$t' => "value" } results
         m[k.to_sym] = v
         m
@@ -151,5 +151,19 @@ module ContactList
       @title = raw_data[:title]
       @id = raw_data[:id]
     end
+  end
+
+
+  # From: http://apidock.com/rails/ActiveSupport/Inflector/underscore
+  def self.underscore(camel_cased_word)
+    acronym_regex = /(?=a)b/
+    return camel_cased_word unless camel_cased_word =~ /[A-Z-]|::/
+    word = camel_cased_word.to_s.gsub(/::/, '/')
+    word.gsub!(/(?:(?<=([A-Za-z\d]))|\b)(#{acronym_regex})(?=\b|[^a-z])/) { "#{$1 && '_'}#{$2.downcase}" }
+    word.gsub!(/([A-Z\d]+)([A-Z][a-z])/,'\1_\2')
+    word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
+    word.tr!('-', '_')
+    word.downcase!
+    word
   end
 end

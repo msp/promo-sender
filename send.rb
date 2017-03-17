@@ -61,16 +61,21 @@ PromoEarlyGroup = Struct.new(:id)
 promo_early_group = PromoEarlyGroup.new('http://www.google.com/m8/feeds/groups/spatial%40infrasonics.net/base/dbff78db39606')
 
 members =  ContactList::GoogleContactsApi.new(service.client, authorize(CONTACTS_SCOPE, CONTACTS_CREDENTIALS_PATH)).group_members(promo_early_group)
-# puts members.length
+puts "Found #{members.length} total contacts"
+
+members = members.uniq {|m| m.email_address}
+puts "Filtered to #{members.length} unique contacts (by email)"
+
 # pp members
 
+create_draft = true
+
 members[0..5].each do |member|
-  # TODO fix this up in extractor as some are nil
-  name = member.full_name || member.raw_data[:full_name][:fullName]
+  name = member.full_name
   puts '-'*30
   puts name
   puts member.email_address
-  puts '\n'
+  puts '\r\n'
   pp member
 
   user_id     = 'me'
@@ -83,12 +88,14 @@ members[0..5].each do |member|
 
   message = Google::Apis::GmailV1::Message.new({raw: _raw})
   draft = Google::Apis::GmailV1::Draft.new({message: message})
-  result = service.create_user_draft(user_id, draft)
 
-  puts "\n\n"
-  puts '='*80
-  puts result.inspect
-  puts '_'*80
+  if create_draft
+    result = service.create_user_draft(user_id, draft)
+    puts "\n\n"
+    puts '='*80
+    puts result.inspect
+    puts '_'*80
+  end
 end
 
 
