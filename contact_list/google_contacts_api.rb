@@ -82,6 +82,7 @@ module ContactList
           # basic_data[:full_name] = basic_data[:name_data].try(:[], :full_name)
           basic_data[:full_name] = basic_data[:name_data]
           primary_email_data = basic_data[:emails].find { |type, email| email[:primary] }
+          primary_email_data = basic_data[:emails].find { |type, email| email[:home] } if !primary_email_data
           if primary_email_data
             basic_data[:primary_email] = primary_email_data.last[:address]
           end
@@ -128,6 +129,7 @@ module ContactList
   end
 
   class GoogleContact
+    include Comparable
     attr_accessor :first_name, :last_name, :full_name, :email_address, :raw_data
 
     def initialize(raw_data)
@@ -135,12 +137,13 @@ module ContactList
       @first_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:given_name] : nil
       @last_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:family_name] : nil
       @full_name = raw_data && raw_data[:name_data] ? raw_data[:name_data][:full_name] : nil
-      @email_address = raw_data[:primary_email]
+      @email_address = raw_data[:primary_email] || ''
     end
 
-    # def full_name
-    #   "#{@first_name} #{@last_name}"
-    # end
+
+    def <=>(other)
+      self.email_address <=> other.email_address
+    end
   end
 
   class GoogleGroup

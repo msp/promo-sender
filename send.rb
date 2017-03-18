@@ -23,7 +23,7 @@ CONTACTS_SCOPE = Google::Apis::PeopleV1::AUTH_CONTACTS_READONLY
 
 ##
 # Ensure valid credentials, either by restoring from the saved credentials
-# files or intitiating an OAuth2 authorization. If authorization is required,
+# files or initiating an OAuth2 authorization. If authorization is required,
 # the user's default browser will be launched to approve the request.
 #
 # @return [Google::Auth::UserRefreshCredentials] OAuth2 credentials
@@ -39,8 +39,8 @@ def authorize(scope, credentials_path)
   if credentials.nil?
     url = authorizer.get_authorization_url(
       base_url: OOB_URI)
-    puts 'Open the following URL in the browser and enter the ' +
-           'resulting code HERE after authorization'
+    puts 'Open the following URL in the browser and paste the ' +
+           'resulting code HERE after authorization:'
     puts url
     code = gets
     credentials = authorizer.get_and_store_credentials_from_code(
@@ -55,35 +55,41 @@ service.client_options.application_name = APPLICATION_NAME
 service.authorization = authorize(GMAIL_SCOPE, GMAIL_CREDENTIALS_PATH)
 
 
-# Look up contacts for a specific group
-# Found from ContactList::GoogleContactsApi.new(service.client, authorize).all_groups inspection
-PromoEarlyGroup = Struct.new(:id)
-promo_early_group = PromoEarlyGroup.new('http://www.google.com/m8/feeds/groups/spatial%40infrasonics.net/base/dbff78db39606')
+# Look up contacts for a specific group. You'd need to edit the URL below for the specific group you care about
+# all_groups =  ContactList::GoogleContactsApi.new(service.client, authorize(CONTACTS_SCOPE, CONTACTS_CREDENTIALS_PATH)).all_groups
+# pp all_groups
 
-members =  ContactList::GoogleContactsApi.new(service.client, authorize(CONTACTS_SCOPE, CONTACTS_CREDENTIALS_PATH)).group_members(promo_early_group)
+PromoAlbumGroup = Struct.new(:id)
+promo_album_group = PromoAlbumGroup.new('http://www.google.com/m8/feeds/groups/you%40gmail.com/base/some-uuid')
+
+members =  ContactList::GoogleContactsApi.new(service.client, authorize(CONTACTS_SCOPE, CONTACTS_CREDENTIALS_PATH)).group_members(promo_album_group)
 puts "Found #{members.length} total contacts"
-
 members = members.uniq {|m| m.email_address}
+members = members.sort
 puts "Filtered to #{members.length} unique contacts (by email)"
 
-# pp members
 
 create_draft = true
 
-members[0..5].each do |member|
-  name = member.full_name
+members.each do |member|
+  name = member.first_name || member.full_name
   puts '-'*30
   puts name
   puts member.email_address
-  puts '\r\n'
-  pp member
+  # pp member
 
-  user_id     = 'me'
+  user_id     = 'me' #('me' is a special value that denotes the currently OAuth'd user)
   format      = 'text/html'
   recipient   = member.email_address
-  sender      = 'spatial@infrasonics.net'
-  subject     = "A music of sound systems LP for #{name}"
-  body        = "Body goes here <a href='http://infrasonics.net'>LINK HERE</a> something after the embedded link <img src='http://spatial.infrasonics.net/infra12008' alt='record cover /> Text after the image."
+  sender      = 'your-name@gmail.com'
+  subject     = "My draft subject for #{member.full_name}"
+  body        = <<-EOT
+<p>Hi #{name}</p>
+<p>INTRO SENTENCE.<br/>
+INTRO SENTENCE TWO.</p>
+<p>EXAMPLE LINK <a href='http://bit.ly/my-link'>HERE</a>.<p/>
+<p>Be well</p>
+EOT
   _raw        = "Content-type: #{format}\r\nTo: #{recipient}\r\nFrom: #{sender}\r\nSubject: #{subject}\r\n\r\n#{body}"
 
   message = Google::Apis::GmailV1::Message.new({raw: _raw})
@@ -97,18 +103,6 @@ members[0..5].each do |member|
     puts '_'*80
   end
 end
-
-
-
-# # Show the user's labels
-# user_id = 'me'
-# result = service.list_user_labels(user_id)
-#
-# puts "Labels:"
-# puts "No labels found" if result.labels.empty?
-# result.labels.each { |label| puts "- #{label.name}" }
-
-
 
 # Can't figure this out :(
 # Returns: invalidArgument: Missing draft message (Google::Apis::ClientError)
